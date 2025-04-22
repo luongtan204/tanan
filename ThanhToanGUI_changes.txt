@@ -1,0 +1,125 @@
+Here are the changes needed for ThanhToanGUI.java:
+
+1. Change field declaration from JTextField to JComboBox<KhuyenMai>:
+```java
+// Form fields
+private JTextField nameField;
+private JTextField idCardField;
+private JTextField emailField;
+private JTextField confirmEmailField;
+private JTextField phoneField;
+private JComboBox<KhuyenMai> promotionComboBox;
+
+// Store the schedule date for promotions
+private LocalDate scheduleDate;
+```
+
+2. Update the UI initialization code in initComponents method:
+```java
+// Center - Promotion selection field
+JPanel promotionPanel = new JPanel(new BorderLayout(5, 0));
+promotionComboBox = new JComboBox<>();
+promotionComboBox.setPreferredSize(new Dimension(200, 30));
+JLabel promoLabel = new JLabel("Chọn khuyến mãi");
+promoLabel.setBorder(new EmptyBorder(0, 0, 0, 5));
+promotionPanel.add(promoLabel, BorderLayout.WEST);
+promotionPanel.add(promotionComboBox, BorderLayout.CENTER);
+
+// Apply button
+JButton applyButton = new JButton("Áp dụng");
+applyButton.addActionListener(e -> applyPromotion());
+promotionPanel.add(applyButton, BorderLayout.EAST);
+bottomPanel.add(promotionPanel, BorderLayout.CENTER);
+```
+
+3. Add a method to populate the combo box with promotions:
+```java
+/**
+ * Populate promotion combo box with promotions applicable to all based on schedule date
+ */
+private void populatePromotionComboBox(LocalDate scheduleDate) {
+    try {
+        // Store the schedule date
+        this.scheduleDate = scheduleDate;
+        
+        // Get promotions applicable to all based on schedule date
+        List<KhuyenMai> promotions = khuyenMaiDAO.findPromotionsForAllByScheduleDate(scheduleDate);
+        
+        // Create a combo box model
+        DefaultComboBoxModel<KhuyenMai> model = new DefaultComboBoxModel<>();
+        
+        // Add a default "No promotion" option
+        model.addElement(null);
+        
+        // Add promotions to the model
+        for (KhuyenMai promotion : promotions) {
+            model.addElement(promotion);
+        }
+        
+        // Set the model to the combo box
+        promotionComboBox.setModel(model);
+        
+        // Set a custom renderer to display promotion name
+        promotionComboBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                
+                if (value == null) {
+                    setText("Chọn khuyến mãi");
+                } else {
+                    KhuyenMai promotion = (KhuyenMai) value;
+                    setText(promotion.getTenKM() + " (" + promotion.getChietKhau() + "%)");
+                }
+                
+                return this;
+            }
+        });
+    } catch (RemoteException e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(
+                this,
+                "Lỗi khi lấy danh sách khuyến mãi: " + e.getMessage(),
+                "Lỗi",
+                JOptionPane.ERROR_MESSAGE
+        );
+    }
+}
+```
+
+4. Update the addTicketToTable method to populate the combo box with promotions:
+```java
+// Add this code at the end of the addTicketToTable method, before the catch block
+// Populate promotion combo box with promotions applicable to all based on train schedule date
+populatePromotionComboBox(lichTrinh.getNgayDi());
+```
+
+5. Update the applyPromotion method to apply the selected promotion:
+```java
+/**
+ * Apply promotion code
+ */
+private void applyPromotion() {
+    KhuyenMai selectedPromotion = (KhuyenMai) promotionComboBox.getSelectedItem();
+    if (selectedPromotion == null) {
+        JOptionPane.showMessageDialog(
+                this,
+                "Vui lòng chọn khuyến mãi",
+                "Thông báo",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+        return;
+    }
+
+    // Apply the selected promotion
+    JOptionPane.showMessageDialog(
+            this,
+            "Đã áp dụng khuyến mãi: " + selectedPromotion.getTenKM(),
+            "Thông báo",
+            JOptionPane.INFORMATION_MESSAGE
+    );
+    
+    // Recalculate total with promotion
+    calculateTotal();
+}
+```
